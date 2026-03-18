@@ -244,7 +244,9 @@ export default function AdminPage() {
           </button>
         </div>
 
-        {dataLoading ? (
+        {activeTab === 'compatibility' ? (
+          <AdminCompatibilityCheck onBack={() => setActiveTab('results')} />
+        ) : dataLoading ? (
           <p className="text-center text-muted-foreground">로딩 중...</p>
         ) : results.length === 0 ? (
           <p className="text-center text-muted-foreground">아직 데이터가 없어요</p>
