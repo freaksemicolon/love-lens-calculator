@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
-import { Trash2, Edit3, RotateCcw, ArrowLeft, Save, X, LogOut, ShieldAlert } from 'lucide-react';
+import { Trash2, Edit3, RotateCcw, ArrowLeft, Save, X, LogOut, ShieldAlert, Heart } from 'lucide-react';
 import { questions } from '@/lib/questions';
+import AdminCompatibilityCheck from '@/components/AdminCompatibilityCheck';
 import type { Answers } from '@/lib/scoring';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -25,6 +26,7 @@ export default function AdminPage() {
   const [dataLoading, setDataLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editAnswers, setEditAnswers] = useState<Answers>({});
+  const [activeTab, setActiveTab] = useState<'results' | 'compatibility'>('results');
 
   // Check auth and admin role
   useEffect(() => {
@@ -197,7 +199,7 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen gradient-romantic">
       <div className="mx-auto max-w-3xl px-4 py-8">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="font-display text-2xl font-bold text-foreground">🛠️ 관리자 모드</h1>
             <p className="text-sm text-muted-foreground">총 {results.length}명 · {user.email}</p>
@@ -218,7 +220,33 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {dataLoading ? (
+        {/* Tabs */}
+        <div className="flex gap-2 mb-6">
+          <button
+            onClick={() => setActiveTab('results')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === 'results'
+                ? 'gradient-hero text-primary-foreground'
+                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+            }`}
+          >
+            📋 데이터 관리
+          </button>
+          <button
+            onClick={() => setActiveTab('compatibility')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === 'compatibility'
+                ? 'gradient-hero text-primary-foreground'
+                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+            }`}
+          >
+            <Heart className="h-3.5 w-3.5" /> 궁합 시뮬레이션
+          </button>
+        </div>
+
+        {activeTab === 'compatibility' ? (
+          <AdminCompatibilityCheck onBack={() => setActiveTab('results')} />
+        ) : dataLoading ? (
           <p className="text-center text-muted-foreground">로딩 중...</p>
         ) : results.length === 0 ? (
           <p className="text-center text-muted-foreground">아직 데이터가 없어요</p>
