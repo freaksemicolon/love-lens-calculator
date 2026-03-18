@@ -26,6 +26,7 @@ export default function AdminPage() {
   const [dataLoading, setDataLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editAnswers, setEditAnswers] = useState<Answers>({});
+  const [activeTab, setActiveTab] = useState<'results' | 'compatibility'>('results');
 
   // Check auth and admin role
   useEffect(() => {
