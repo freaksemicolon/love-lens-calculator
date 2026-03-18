@@ -114,11 +114,8 @@ export default function Index() {
 
       if (override) {
         const score = (override as any).modified_score as number;
-        const gradeInfo = getGradeInfo(score);
-        finalResult.finalScore = score;
-        finalResult.grade = gradeInfo.grade;
-        finalResult.gradeEmoji = gradeInfo.gradeEmoji;
-        finalResult.description = gradeInfo.description;
+        const adjusted = applyScoreOverride(finalResult, score);
+        Object.assign(finalResult, adjusted);
       }
 
       setResultNames({ a: nickA.trim(), b: nickB.trim() });
