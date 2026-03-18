@@ -42,7 +42,9 @@ export default function Index() {
         }
         throw error;
       }
-      setStep('done');
+      const profile = analyzePersonal(nickname.trim(), answers);
+      setPersonalProfile(profile);
+      setStep('personal');
     } catch (e: any) {
       toast.error('저장 중 오류가 발생했어요: ' + e.message);
     } finally {
