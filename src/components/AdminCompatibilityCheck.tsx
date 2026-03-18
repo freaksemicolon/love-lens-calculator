@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Heart, Users, ArrowLeft, Search, RotateCcw, Trash2, Edit3, Save, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { calculateFinal } from '@/lib/scoring';
 import type { Answers, FinalResult } from '@/lib/scoring';
+import { getGradeInfo, applyScoreOverride } from '@/lib/score-override';
 import ResultView from '@/components/ResultView';
 import { toast } from 'sonner';
 
