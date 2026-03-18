@@ -4,11 +4,13 @@ import { Heart, ArrowRight, Search, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Answers } from '@/lib/scoring';
 import { calculateFinal } from '@/lib/scoring';
+import { analyzePersonal, type PersonalProfile } from '@/lib/personal-analysis';
 import QuizSection from '@/components/QuizSection';
 import ResultView from '@/components/ResultView';
+import PersonalResultView from '@/components/PersonalResultView';
 import { toast } from 'sonner';
 
-type Step = 'landing' | 'quiz' | 'done' | 'check' | 'result';
+type Step = 'landing' | 'quiz' | 'personal' | 'check' | 'result';
 
 export default function Index() {
   const [step, setStep] = useState<Step>('landing');
