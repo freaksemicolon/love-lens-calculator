@@ -230,7 +230,7 @@ export default function Index() {
               className="mt-6 flex justify-center gap-6 text-xs text-muted-foreground"
             >
               <span>📋 40문항</span>
-              <span>⏱️ 약 5분</span>
+              <span>⏱️ 약 10분</span>
               <span>💯 100점 만점</span>
             </motion.div>
           </div>
