@@ -225,53 +225,17 @@ export default function Index() {
         </motion.div>
       )}
 
-      {step === 'done' && (
-        <motion.div
-          key="done"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="min-h-screen gradient-romantic flex items-center justify-center px-4"
-        >
-          <div className="max-w-md w-full text-center">
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: 'spring' }}
-              className="text-6xl mb-4"
-            >
-              ✅
-            </motion.div>
-            <h2 className="font-display text-2xl font-bold text-foreground mb-2">
-              테스트 완료!
-            </h2>
-            <p className="text-muted-foreground text-sm mb-2">
-              <span className="font-semibold text-foreground">{nickname}</span>님의 결과가 저장되었어요.
-            </p>
-            <p className="text-muted-foreground text-sm mb-8">
-              상대방도 테스트를 완료하면<br />궁합 결과를 확인할 수 있어요!
-            </p>
-
-            <button
-              onClick={() => setStep('check')}
-              className="inline-flex items-center gap-2 rounded-lg gradient-hero px-8 py-3.5 text-sm font-semibold text-primary-foreground shadow-romantic hover:scale-105 transition-all"
-            >
-              <Search className="h-4 w-4" />
-              궁합 결과 확인하기
-            </button>
-
-            <div className="mt-4">
-              <button
-                onClick={() => {
-                  setStep('landing');
-                  setNickname('');
-                }}
-                className="text-sm text-muted-foreground hover:text-foreground"
-              >
-                처음으로 돌아가기
-              </button>
-            </div>
-          </div>
+      {step === 'personal' && personalProfile && (
+        <motion.div key="personal" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <PersonalResultView
+            profile={personalProfile}
+            onCheckCompatibility={() => setStep('check')}
+            onReset={() => {
+              setStep('landing');
+              setNickname('');
+              setPersonalProfile(null);
+            }}
+          />
         </motion.div>
       )}
 
