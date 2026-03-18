@@ -135,8 +135,7 @@ export default function AdminCompatibilityCheck({ onBack }: Props) {
       return;
     }
 
-    const { grade, gradeEmoji, description } = getGradeInfo(score);
-    setResult({ ...result, finalScore: score, grade, gradeEmoji, description });
+    setResult(applyScoreOverride(originalResultRef.current!, score));
     setShowScoreEdit(false);
     setCustomScore('');
     fetchOverrides();
