@@ -101,6 +101,7 @@ export default function Index() {
       const answersB = dataB.answers as unknown as Answers;
       const finalResult = calculateFinal(answersA, answersB);
       setResultNames({ a: nickA.trim(), b: nickB.trim() });
+      setResultAnswers({ a: answersA, b: answersB });
       setResult(finalResult);
       setStep('result');
     } catch (e: any) {
