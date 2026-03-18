@@ -25,6 +25,7 @@ export default function Index() {
   const [checking, setChecking] = useState(false);
   const [result, setResult] = useState<ReturnType<typeof calculateFinal> | null>(null);
   const [resultNames, setResultNames] = useState<{ a: string; b: string }>({ a: '', b: '' });
+  const [resultAnswers, setResultAnswers] = useState<{ a: Answers; b: Answers }>({ a: {}, b: {} });
 
   const handleQuizComplete = async (answers: Answers) => {
     setMyAnswers(answers);
