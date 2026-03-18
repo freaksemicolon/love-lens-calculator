@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
-import { Trash2, Edit3, RotateCcw, ArrowLeft, Save, X, LogOut, ShieldAlert } from 'lucide-react';
+import { Trash2, Edit3, RotateCcw, ArrowLeft, Save, X, LogOut, ShieldAlert, Heart } from 'lucide-react';
 import { questions } from '@/lib/questions';
+import AdminCompatibilityCheck from '@/components/AdminCompatibilityCheck';
 import type { Answers } from '@/lib/scoring';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
