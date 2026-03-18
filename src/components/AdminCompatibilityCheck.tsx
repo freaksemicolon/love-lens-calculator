@@ -42,6 +42,7 @@ export default function AdminCompatibilityCheck({ onBack }: Props) {
   const [showScoreEdit, setShowScoreEdit] = useState(false);
   const [customScore, setCustomScore] = useState('');
   const [originalScore, setOriginalScore] = useState(0);
+  const originalResultRef = useRef<FinalResult | null>(null);
 
   useEffect(() => {
     fetchPeople();
