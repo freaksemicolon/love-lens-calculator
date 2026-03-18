@@ -10,30 +10,19 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
 
   const handleSubmit = async () => {
     if (!email.trim() || !password.trim()) return;
     setLoading(true);
 
     try {
-      if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
-          email: email.trim(),
-          password,
-        });
-        if (error) throw error;
-        toast.success('회원가입 완료! 로그인해주세요.');
-        setIsSignUp(false);
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password,
-        });
-        if (error) throw error;
-        toast.success('로그인 성공!');
-        navigate('/admin');
-      }
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      if (error) throw error;
+      toast.success('로그인 성공!');
+      navigate('/admin');
     } catch (e: any) {
       toast.error(e.message || '오류가 발생했어요');
     } finally {
@@ -52,10 +41,10 @@ export default function LoginPage() {
           <Lock className="h-8 w-8 text-primary" />
         </div>
         <h1 className="font-display text-2xl font-bold text-foreground mb-2">
-          {isSignUp ? '회원가입' : '관리자 로그인'}
+          관리자 로그인
         </h1>
         <p className="text-sm text-muted-foreground mb-6">
-          {isSignUp ? '계정을 만들어주세요' : '이메일로 로그인하세요'}
+          이메일로 로그인하세요
         </p>
 
         <div className="space-y-3 mb-4">
@@ -84,14 +73,7 @@ export default function LoginPage() {
           disabled={loading || !email.trim() || !password.trim()}
           className="w-full rounded-lg gradient-hero px-6 py-3 text-sm font-semibold text-primary-foreground shadow-romantic hover:scale-105 transition-all disabled:opacity-50 disabled:hover:scale-100"
         >
-          {loading ? '처리 중...' : isSignUp ? '회원가입' : '로그인'}
-        </button>
-
-        <button
-          onClick={() => setIsSignUp(!isSignUp)}
-          className="mt-3 text-sm text-primary hover:underline"
-        >
-          {isSignUp ? '이미 계정이 있어요 → 로그인' : '계정이 없어요 → 회원가입'}
+          {loading ? '처리 중...' : '로그인'}
         </button>
 
         <button
