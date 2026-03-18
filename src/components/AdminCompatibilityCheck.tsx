@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Heart, Users, ArrowLeft, Search, RotateCcw, Trash2, Edit3, Save, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { calculateFinal } from '@/lib/scoring';
 import type { Answers, FinalResult } from '@/lib/scoring';
+import { getGradeInfo, applyScoreOverride } from '@/lib/score-override';
 import ResultView from '@/components/ResultView';
 import { toast } from 'sonner';
 
@@ -26,14 +27,6 @@ interface OverrideRecord {
   created_at: string;
 }
 
-function getGradeInfo(score: number) {
-  if (score >= 90) return { grade: '매우 안정적', gradeEmoji: '💖', description: '오래갈 수 있는 관계예요. 서로를 잘 이해하고 있어요.' };
-  if (score >= 80) return { grade: '좋은 관계', gradeEmoji: '💕', description: '서로에게 좋은 영향을 주고 있어요.' };
-  if (score >= 70) return { grade: '노력 필요', gradeEmoji: '💛', description: '약간의 노력으로 더 좋아질 수 있어요.' };
-  if (score >= 60) return { grade: '피로한 연애', gradeEmoji: '🧡', description: '지치지 않도록 서로 배려가 필요해요.' };
-  if (score >= 50) return { grade: '불안정', gradeEmoji: '💔', description: '관계에 불안정한 요소가 많아요.' };
-  return { grade: '구조적 어려움', gradeEmoji: '🩹', description: '근본적인 대화와 변화가 필요해요.' };
-}
 
 export default function AdminCompatibilityCheck({ onBack }: Props) {
   const [people, setPeople] = useState<QuizPerson[]>([]);
@@ -49,6 +42,7 @@ export default function AdminCompatibilityCheck({ onBack }: Props) {
   const [showScoreEdit, setShowScoreEdit] = useState(false);
   const [customScore, setCustomScore] = useState('');
   const [originalScore, setOriginalScore] = useState(0);
+  const originalResultRef = useRef<FinalResult | null>(null);
 
   useEffect(() => {
     fetchPeople();
@@ -96,6 +90,7 @@ export default function AdminCompatibilityCheck({ onBack }: Props) {
     }
 
     const finalResult = calculateFinal(personA.answers, personB.answers);
+    originalResultRef.current = finalResult;
     setResult(finalResult);
     setOriginalScore(finalResult.finalScore);
     setResultNames({ a: personA.nickname, b: personB.nickname });
@@ -142,8 +137,7 @@ export default function AdminCompatibilityCheck({ onBack }: Props) {
       return;
     }
 
-    const { grade, gradeEmoji, description } = getGradeInfo(score);
-    setResult({ ...result, finalScore: score, grade, gradeEmoji, description });
+    setResult(applyScoreOverride(originalResultRef.current!, score));
     setShowScoreEdit(false);
     setCustomScore('');
     fetchOverrides();
@@ -166,9 +160,8 @@ export default function AdminCompatibilityCheck({ onBack }: Props) {
       const names = [resultNames.a, resultNames.b].sort();
       const recordNames = [record.nickname_a, record.nickname_b].sort();
       if (names[0] === recordNames[0] && names[1] === recordNames[1]) {
-        const { grade, gradeEmoji, description } = getGradeInfo(record.original_score);
-        setResult({ ...result, finalScore: record.original_score, grade, gradeEmoji, description });
-        setOriginalScore(record.original_score);
+        setResult(originalResultRef.current!);
+        setOriginalScore(originalResultRef.current!.finalScore);
       }
     }
 

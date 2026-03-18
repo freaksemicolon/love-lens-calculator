@@ -5,19 +5,11 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Answers } from '@/lib/scoring';
 import { calculateFinal } from '@/lib/scoring';
 import { analyzePersonal, type PersonalProfile } from '@/lib/personal-analysis';
+import { applyScoreOverride } from '@/lib/score-override';
 import QuizSection from '@/components/QuizSection';
 import ResultView from '@/components/ResultView';
 import PersonalResultView from '@/components/PersonalResultView';
 import { toast } from 'sonner';
-
-function getGradeInfo(score: number) {
-  if (score >= 90) return { grade: '매우 안정적', gradeEmoji: '💖', description: '오래갈 수 있는 관계예요. 서로를 잘 이해하고 있어요.' };
-  if (score >= 80) return { grade: '좋은 관계', gradeEmoji: '💕', description: '서로에게 좋은 영향을 주고 있어요.' };
-  if (score >= 70) return { grade: '노력 필요', gradeEmoji: '💛', description: '약간의 노력으로 더 좋아질 수 있어요.' };
-  if (score >= 60) return { grade: '피로한 연애', gradeEmoji: '🧡', description: '지치지 않도록 서로 배려가 필요해요.' };
-  if (score >= 50) return { grade: '불안정', gradeEmoji: '💔', description: '관계에 불안정한 요소가 많아요.' };
-  return { grade: '구조적 어려움', gradeEmoji: '🩹', description: '근본적인 대화와 변화가 필요해요.' };
-}
 
 type Step = 'landing' | 'quiz' | 'personal' | 'check' | 'result';
 
@@ -122,11 +114,8 @@ export default function Index() {
 
       if (override) {
         const score = (override as any).modified_score as number;
-        const gradeInfo = getGradeInfo(score);
-        finalResult.finalScore = score;
-        finalResult.grade = gradeInfo.grade;
-        finalResult.gradeEmoji = gradeInfo.gradeEmoji;
-        finalResult.description = gradeInfo.description;
+        const adjusted = applyScoreOverride(finalResult, score);
+        Object.assign(finalResult, adjusted);
       }
 
       setResultNames({ a: nickA.trim(), b: nickB.trim() });
@@ -230,7 +219,7 @@ export default function Index() {
               className="mt-6 flex justify-center gap-6 text-xs text-muted-foreground"
             >
               <span>📋 40문항</span>
-              <span>⏱️ 약 5분</span>
+              <span>⏱️ 약 10분</span>
               <span>💯 100점 만점</span>
             </motion.div>
           </div>
