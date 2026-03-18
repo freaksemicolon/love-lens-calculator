@@ -90,6 +90,7 @@ export default function AdminCompatibilityCheck({ onBack }: Props) {
     }
 
     const finalResult = calculateFinal(personA.answers, personB.answers);
+    originalResultRef.current = finalResult;
     setResult(finalResult);
     setOriginalScore(finalResult.finalScore);
     setResultNames({ a: personA.nickname, b: personB.nickname });
