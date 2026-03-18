@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      compatibility_overrides: {
+        Row: {
+          created_at: string
+          id: string
+          modified_by: string | null
+          modified_score: number
+          nickname_a: string
+          nickname_b: string
+          original_score: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          modified_by?: string | null
+          modified_score: number
+          nickname_a: string
+          nickname_b: string
+          original_score: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          modified_by?: string | null
+          modified_score?: number
+          nickname_a?: string
+          nickname_b?: string
+          original_score?: number
+        }
+        Relationships: []
+      }
       quiz_results: {
         Row: {
           answers: Json
