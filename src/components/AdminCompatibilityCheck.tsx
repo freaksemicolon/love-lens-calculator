@@ -17,30 +17,13 @@ interface QuizPerson {
   answers: Answers;
 }
 
-interface CompatibilityRecord {
+interface OverrideRecord {
   id: string;
-  nameA: string;
-  nameB: string;
-  originalScore: number;
-  modifiedScore: number;
-  grade: string;
-  gradeEmoji: string;
-  timestamp: string;
-}
-
-const STORAGE_KEY = 'admin_compatibility_history';
-
-function loadHistory(): CompatibilityRecord[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveHistory(records: CompatibilityRecord[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+  nickname_a: string;
+  nickname_b: string;
+  original_score: number;
+  modified_score: number;
+  created_at: string;
 }
 
 function getGradeInfo(score: number) {
@@ -60,7 +43,7 @@ export default function AdminCompatibilityCheck({ onBack }: Props) {
   const [result, setResult] = useState<FinalResult | null>(null);
   const [resultNames, setResultNames] = useState<{ a: string; b: string }>({ a: '', b: '' });
   const [resultAnswers, setResultAnswers] = useState<{ a: Answers; b: Answers }>({ a: {}, b: {} });
-  const [history, setHistory] = useState<CompatibilityRecord[]>(loadHistory);
+  const [overrides, setOverrides] = useState<OverrideRecord[]>([]);
 
   // Score override state
   const [showScoreEdit, setShowScoreEdit] = useState(false);
@@ -68,27 +51,37 @@ export default function AdminCompatibilityCheck({ onBack }: Props) {
   const [originalScore, setOriginalScore] = useState(0);
 
   useEffect(() => {
-    const fetchPeople = async () => {
-      const { data, error } = await supabase
-        .from('quiz_results')
-        .select('id, nickname, answers')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        toast.error('데이터 로드 실패');
-      } else {
-        setPeople(
-          (data || []).map((d) => ({
-            id: d.id,
-            nickname: d.nickname,
-            answers: d.answers as unknown as Answers,
-          }))
-        );
-      }
-      setLoading(false);
-    };
     fetchPeople();
+    fetchOverrides();
   }, []);
+
+  const fetchPeople = async () => {
+    const { data, error } = await supabase
+      .from('quiz_results')
+      .select('id, nickname, answers')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      toast.error('데이터 로드 실패');
+    } else {
+      setPeople(
+        (data || []).map((d) => ({
+          id: d.id,
+          nickname: d.nickname,
+          answers: d.answers as unknown as Answers,
+        }))
+      );
+    }
+    setLoading(false);
+  };
+
+  const fetchOverrides = async () => {
+    const { data } = await supabase
+      .from('compatibility_overrides')
+      .select('*')
+      .order('created_at', { ascending: false });
+    setOverrides((data as unknown as OverrideRecord[]) || []);
+  };
 
   const handleCalculate = () => {
     const personA = people.find((p) => p.id === selectedA);
@@ -111,7 +104,7 @@ export default function AdminCompatibilityCheck({ onBack }: Props) {
     setCustomScore('');
   };
 
-  const handleApplyCustomScore = () => {
+  const handleApplyCustomScore = async () => {
     const score = Number(customScore);
     if (isNaN(score) || score < 0 || score > 100) {
       toast.error('0~100 사이 점수를 입력해주세요');
@@ -119,115 +112,69 @@ export default function AdminCompatibilityCheck({ onBack }: Props) {
     }
     if (!result) return;
 
-    const { grade, gradeEmoji, description } = getGradeInfo(score);
-    const modifiedResult: FinalResult = {
-      ...result,
-      finalScore: score,
-      grade,
-      gradeEmoji,
-      description,
-    };
-    setResult(modifiedResult);
+    const nameA = resultNames.a;
+    const nameB = resultNames.b;
+    // Use sorted names to ensure unique pair
+    const sortedA = nameA < nameB ? nameA : nameB;
+    const sortedB = nameA < nameB ? nameB : nameA;
 
-    // Save to history
-    const record: CompatibilityRecord = {
-      id: crypto.randomUUID(),
-      nameA: resultNames.a,
-      nameB: resultNames.b,
-      originalScore: originalScore,
-      modifiedScore: score,
-      grade,
-      gradeEmoji,
-      timestamp: new Date().toISOString(),
-    };
-    const updated = [record, ...history];
-    setHistory(updated);
-    saveHistory(updated);
+    const { data: session } = await supabase.auth.getSession();
+    const userId = session?.session?.user?.id;
 
-    setShowScoreEdit(false);
-    setCustomScore('');
-    toast.success(`궁합 점수를 ${originalScore}점 → ${score}점으로 변경했어요`);
-  };
+    // Upsert: delete existing then insert (unique index on sorted pair)
+    await supabase
+      .from('compatibility_overrides')
+      .delete()
+      .or(`and(nickname_a.eq.${sortedA},nickname_b.eq.${sortedB}),and(nickname_a.eq.${sortedB},nickname_b.eq.${sortedA})`);
 
-  const handleRestoreRecord = (record: CompatibilityRecord) => {
-    // If current result matches this record, restore original score
-    if (result && resultNames.a === record.nameA && resultNames.b === record.nameB) {
-      const { grade, gradeEmoji, description } = getGradeInfo(record.originalScore);
-      setResult({
-        ...result,
-        finalScore: record.originalScore,
-        grade,
-        gradeEmoji,
-        description,
-      });
-      toast.success(`${record.nameA} ❤️ ${record.nameB} 원래 점수(${record.originalScore}점)로 복원했어요`);
-    } else {
-      toast.info(`해당 커플을 다시 선택하고 결과를 확인해주세요`);
+    const { error } = await supabase
+      .from('compatibility_overrides')
+      .insert({
+        nickname_a: sortedA,
+        nickname_b: sortedB,
+        original_score: originalScore,
+        modified_score: score,
+        modified_by: userId,
+      } as any);
+
+    if (error) {
+      toast.error('저장 실패: ' + error.message);
+      return;
     }
 
-    // Remove from history
-    const updated = history.filter((r) => r.id !== record.id);
-    setHistory(updated);
-    saveHistory(updated);
+    const { grade, gradeEmoji, description } = getGradeInfo(score);
+    setResult({ ...result, finalScore: score, grade, gradeEmoji, description });
+    setShowScoreEdit(false);
+    setCustomScore('');
+    fetchOverrides();
+    toast.success(`궁합 점수를 ${originalScore}점 → ${score}점으로 변경했어요 (실제 결과에 반영됨)`);
   };
 
-  const handleDeleteRecord = (id: string) => {
-    const updated = history.filter((r) => r.id !== id);
-    setHistory(updated);
-    saveHistory(updated);
-    toast.success('기록 삭제 완료');
+  const handleDeleteOverride = async (record: OverrideRecord) => {
+    const { error } = await supabase
+      .from('compatibility_overrides')
+      .delete()
+      .eq('id', record.id);
+
+    if (error) {
+      toast.error('삭제 실패');
+      return;
+    }
+
+    // If current result matches, restore original score
+    if (result) {
+      const names = [resultNames.a, resultNames.b].sort();
+      const recordNames = [record.nickname_a, record.nickname_b].sort();
+      if (names[0] === recordNames[0] && names[1] === recordNames[1]) {
+        const { grade, gradeEmoji, description } = getGradeInfo(record.original_score);
+        setResult({ ...result, finalScore: record.original_score, grade, gradeEmoji, description });
+        setOriginalScore(record.original_score);
+      }
+    }
+
+    fetchOverrides();
+    toast.success(`${record.nickname_a} ❤️ ${record.nickname_b} 원래 점수(${record.original_score}점)로 복원 완료`);
   };
-
-  const handleClearHistory = () => {
-    if (!confirm('모든 궁합 수정 기록을 삭제할까요?')) return;
-    setHistory([]);
-    saveHistory([]);
-    toast.success('기록 전체 삭제 완료');
-  };
-
-  if (result && !showScoreEdit) {
-    return (
-      <div className="space-y-4">
-        {/* Score override bar */}
-        <div className="flex items-center justify-between rounded-xl bg-card p-4 shadow-soft">
-          <div className="text-sm text-muted-foreground">
-            현재 점수: <span className="font-bold text-foreground">{result.finalScore}점</span>
-            {result.finalScore !== originalScore && (
-              <span className="ml-2 text-xs text-primary">(원본: {originalScore}점)</span>
-            )}
-          </div>
-          <button
-            onClick={() => {
-              setShowScoreEdit(true);
-              setCustomScore(String(result.finalScore));
-            }}
-            className="flex items-center gap-1 text-xs gradient-hero text-primary-foreground px-3 py-1.5 rounded-lg hover:scale-105 transition-transform"
-          >
-            <Edit3 className="h-3 w-3" /> 점수 수정
-          </button>
-        </div>
-
-        <ResultView
-          result={result}
-          nameA={resultNames.a}
-          nameB={resultNames.b}
-          answersA={resultAnswers.a}
-          answersB={resultAnswers.b}
-          onReset={() => setResult(null)}
-        />
-
-        {/* History below result */}
-        {history.length > 0 && (
-          <HistorySection
-            history={history}
-            onRestore={handleRestoreRecord}
-            onDelete={handleDeleteRecord}
-            onClearAll={handleClearHistory}
-          />
-        )}
-      </div>
-    );
-  }
 
   if (result && showScoreEdit) {
     return (
@@ -238,6 +185,8 @@ export default function AdminCompatibilityCheck({ onBack }: Props) {
           </h3>
           <p className="text-xs text-muted-foreground mb-4">
             원래 점수: {originalScore}점 → 수정할 점수를 입력하세요 (0~100)
+            <br />
+            <span className="text-primary">⚠️ 저장하면 실제 사용자 궁합 결과에도 반영됩니다</span>
           </p>
           <div className="flex items-center gap-3">
             <input
@@ -273,6 +222,43 @@ export default function AdminCompatibilityCheck({ onBack }: Props) {
     );
   }
 
+  if (result && !showScoreEdit) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between rounded-xl bg-card p-4 shadow-soft">
+          <div className="text-sm text-muted-foreground">
+            현재 점수: <span className="font-bold text-foreground">{result.finalScore}점</span>
+            {result.finalScore !== originalScore && (
+              <span className="ml-2 text-xs text-primary">(원본: {originalScore}점)</span>
+            )}
+          </div>
+          <button
+            onClick={() => {
+              setShowScoreEdit(true);
+              setCustomScore(String(result.finalScore));
+            }}
+            className="flex items-center gap-1 text-xs gradient-hero text-primary-foreground px-3 py-1.5 rounded-lg hover:scale-105 transition-transform"
+          >
+            <Edit3 className="h-3 w-3" /> 점수 수정
+          </button>
+        </div>
+
+        <ResultView
+          result={result}
+          nameA={resultNames.a}
+          nameB={resultNames.b}
+          answersA={resultAnswers.a}
+          answersB={resultAnswers.b}
+          onReset={() => setResult(null)}
+        />
+
+        {overrides.length > 0 && (
+          <OverrideHistory overrides={overrides} onDelete={handleDeleteOverride} />
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -288,7 +274,7 @@ export default function AdminCompatibilityCheck({ onBack }: Props) {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        두 사람을 선택하면 궁합 결과를 확인하고, 점수를 직접 수정할 수 있어요.
+        두 사람을 선택하면 궁합 결과를 확인하고, 점수를 수정하면 실제 결과에도 반영돼요.
       </p>
 
       {loading ? (
@@ -332,29 +318,19 @@ export default function AdminCompatibilityCheck({ onBack }: Props) {
         </>
       )}
 
-      {/* History */}
-      {history.length > 0 && (
-        <HistorySection
-          history={history}
-          onRestore={handleRestoreRecord}
-          onDelete={handleDeleteRecord}
-          onClearAll={handleClearHistory}
-        />
+      {overrides.length > 0 && (
+        <OverrideHistory overrides={overrides} onDelete={handleDeleteOverride} />
       )}
     </div>
   );
 }
 
-function HistorySection({
-  history,
-  onRestore,
+function OverrideHistory({
+  overrides,
   onDelete,
-  onClearAll,
 }: {
-  history: CompatibilityRecord[];
-  onRestore: (record: CompatibilityRecord) => void;
-  onDelete: (id: string) => void;
-  onClearAll: () => void;
+  overrides: OverrideRecord[];
+  onDelete: (record: OverrideRecord) => void;
 }) {
   return (
     <motion.div
@@ -362,55 +338,40 @@ function HistorySection({
       animate={{ opacity: 1, y: 0 }}
       className="space-y-3"
     >
-      <div className="flex items-center justify-between">
-        <h3 className="font-display text-sm font-semibold text-foreground">
-          📋 점수 수정 기록 ({history.length})
-        </h3>
-        <button
-          onClick={onClearAll}
-          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors"
-        >
-          <Trash2 className="h-3 w-3" /> 전체 삭제
-        </button>
-      </div>
-
+      <h3 className="font-display text-sm font-semibold text-foreground">
+        📋 점수 수정 기록 ({overrides.length})
+      </h3>
       <div className="space-y-2">
-        {history.map((record) => (
-          <motion.div
-            key={record.id}
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex items-center justify-between rounded-lg bg-card p-3 shadow-soft"
-          >
-            <div className="flex items-center gap-3">
-              <span className="text-lg">{record.gradeEmoji}</span>
-              <div>
-                <p className="text-sm font-medium text-foreground">
-                  {record.nameA} ❤️ {record.nameB}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {record.originalScore}점 → <span className="text-primary font-semibold">{record.modifiedScore}점</span> · {record.grade} · {new Date(record.timestamp).toLocaleString('ko-KR')}
-                </p>
+        {overrides.map((record) => {
+          const { gradeEmoji } = getGradeInfo(record.modified_score);
+          return (
+            <motion.div
+              key={record.id}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="flex items-center justify-between rounded-lg bg-card p-3 shadow-soft"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-lg">{gradeEmoji}</span>
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    {record.nickname_a} ❤️ {record.nickname_b}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {record.original_score}점 → <span className="text-primary font-semibold">{record.modified_score}점</span> · {new Date(record.created_at).toLocaleString('ko-KR')}
+                  </p>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center gap-1">
               <button
-                onClick={() => onRestore(record)}
-                className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-                title="원래 점수로 복원"
+                onClick={() => onDelete(record)}
+                className="flex items-center gap-1 p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                title="원래 점수로 복원 (수정 기록 삭제)"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
               </button>
-              <button
-                onClick={() => onDelete(record.id)}
-                className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                title="기록 삭제"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          </motion.div>
-        ))}
+            </motion.div>
+          );
+        })}
       </div>
     </motion.div>
   );
