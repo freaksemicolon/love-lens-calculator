@@ -320,6 +320,8 @@ export default function Index() {
             result={result}
             nameA={resultNames.a}
             nameB={resultNames.b}
+            answersA={resultAnswers.a}
+            answersB={resultAnswers.b}
             onReset={() => {
               setStep('landing');
               setResult(null);
