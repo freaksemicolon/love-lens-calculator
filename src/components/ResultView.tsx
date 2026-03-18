@@ -126,7 +126,7 @@ export default function ResultView({ result, nameA, nameB, onReset }: Props) {
             </h3>
             {result.bonuses.reasons.map((r, i) => (
               <p key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
-                <TrendingUp className="h-3 w-3 text-green-500 shrink-0" /> {r}
+                <TrendingUp className="h-3 w-3 text-primary shrink-0" /> {r}
               </p>
             ))}
           </motion.div>
