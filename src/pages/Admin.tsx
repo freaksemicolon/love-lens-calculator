@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
-import { Lock, Trash2, Edit3, RotateCcw, ArrowLeft, Save, X } from 'lucide-react';
+import { Trash2, Edit3, RotateCcw, ArrowLeft, Save, X, LogOut, ShieldAlert } from 'lucide-react';
 import { questions } from '@/lib/questions';
 import type { Answers } from '@/lib/scoring';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
-
-const ADMIN_PASSWORD = 'admin1234';
+import type { User } from '@supabase/supabase-js';
 
 interface QuizResult {
   id: string;
@@ -19,15 +18,54 @@ interface QuizResult {
 
 export default function AdminPage() {
   const navigate = useNavigate();
-  const [authenticated, setAuthenticated] = useState(false);
-  const [password, setPassword] = useState('');
+  const [user, setUser] = useState<User | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [results, setResults] = useState<QuizResult[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [dataLoading, setDataLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editAnswers, setEditAnswers] = useState<Answers>({});
 
+  // Check auth and admin role
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+
+        if (currentUser) {
+          // Check admin role via has_role function
+          const { data } = await supabase.rpc('has_role', {
+            _user_id: currentUser.id,
+            _role: 'admin',
+          });
+          setIsAdmin(data === true);
+        } else {
+          setIsAdmin(false);
+        }
+        setLoading(false);
+      }
+    );
+
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+
+      if (currentUser) {
+        const { data } = await supabase.rpc('has_role', {
+          _user_id: currentUser.id,
+          _role: 'admin',
+        });
+        setIsAdmin(data === true);
+      }
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   const fetchResults = async () => {
-    setLoading(true);
+    setDataLoading(true);
     const { data, error } = await supabase
       .from('quiz_results')
       .select('*')
@@ -38,26 +76,23 @@ export default function AdminPage() {
     } else {
       setResults((data as unknown as QuizResult[]) || []);
     }
-    setLoading(false);
+    setDataLoading(false);
   };
 
   useEffect(() => {
-    if (authenticated) fetchResults();
-  }, [authenticated]);
+    if (isAdmin) fetchResults();
+  }, [isAdmin]);
 
-  const handleLogin = () => {
-    if (password === ADMIN_PASSWORD) {
-      setAuthenticated(true);
-    } else {
-      toast.error('비밀번호가 틀렸어요!');
-    }
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/');
   };
 
   const handleDelete = async (id: string, nickname: string) => {
     if (!confirm(`"${nickname}" 데이터를 삭제할까요?`)) return;
     const { error } = await supabase.from('quiz_results').delete().eq('id', id);
     if (error) {
-      toast.error('삭제 실패');
+      toast.error('삭제 실패 (권한을 확인하세요)');
     } else {
       toast.success(`${nickname} 삭제 완료`);
       setResults((prev) => prev.filter((r) => r.id !== id));
@@ -70,9 +105,7 @@ export default function AdminPage() {
   };
 
   const handleSaveEdit = async (result: QuizResult) => {
-    // Save original answers if not already saved
     const originalAnswers = result.original_answers || result.answers;
-
     const { error } = await supabase
       .from('quiz_results')
       .update({
@@ -82,7 +115,7 @@ export default function AdminPage() {
       .eq('id', result.id);
 
     if (error) {
-      toast.error('저장 실패');
+      toast.error('저장 실패 (권한을 확인하세요)');
     } else {
       toast.success('점수 수정 완료');
       setEditingId(null);
@@ -111,7 +144,20 @@ export default function AdminPage() {
     }
   };
 
-  if (!authenticated) {
+  if (loading) {
+    return (
+      <div className="min-h-screen gradient-romantic flex items-center justify-center">
+        <p className="text-muted-foreground">로딩 중...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    navigate('/login');
+    return null;
+  }
+
+  if (!isAdmin) {
     return (
       <div className="min-h-screen gradient-romantic flex items-center justify-center px-4">
         <motion.div
@@ -119,31 +165,30 @@ export default function AdminPage() {
           animate={{ opacity: 1, y: 0 }}
           className="max-w-sm w-full text-center"
         >
-          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-            <Lock className="h-8 w-8 text-primary" />
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
+            <ShieldAlert className="h-8 w-8 text-destructive" />
           </div>
-          <h1 className="font-display text-2xl font-bold text-foreground mb-2">개발자 모드</h1>
-          <p className="text-sm text-muted-foreground mb-6">비밀번호를 입력하세요</p>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-            placeholder="비밀번호"
-            className="w-full rounded-lg border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 mb-4"
-          />
-          <button
-            onClick={handleLogin}
-            className="w-full rounded-lg gradient-hero px-6 py-3 text-sm font-semibold text-primary-foreground shadow-romantic hover:scale-105 transition-all"
-          >
-            입장
-          </button>
-          <button
-            onClick={() => navigate('/')}
-            className="mt-3 text-sm text-muted-foreground hover:text-foreground"
-          >
-            ← 돌아가기
-          </button>
+          <h1 className="font-display text-2xl font-bold text-foreground mb-2">접근 권한 없음</h1>
+          <p className="text-sm text-muted-foreground mb-4">
+            관리자 권한이 필요합니다.
+          </p>
+          <p className="text-xs text-muted-foreground mb-6">
+            로그인 계정: {user.email}
+          </p>
+          <div className="flex gap-2 justify-center">
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1 text-sm bg-secondary text-secondary-foreground px-4 py-2 rounded-lg hover:bg-secondary/80"
+            >
+              <LogOut className="h-4 w-4" /> 로그아웃
+            </button>
+            <button
+              onClick={() => navigate('/')}
+              className="text-sm text-muted-foreground hover:text-foreground px-4 py-2"
+            >
+              ← 돌아가기
+            </button>
+          </div>
         </motion.div>
       </div>
     );
@@ -154,18 +199,26 @@ export default function AdminPage() {
       <div className="mx-auto max-w-3xl px-4 py-8">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="font-display text-2xl font-bold text-foreground">🛠️ 개발자 모드</h1>
-            <p className="text-sm text-muted-foreground">총 {results.length}명</p>
+            <h1 className="font-display text-2xl font-bold text-foreground">🛠️ 관리자 모드</h1>
+            <p className="text-sm text-muted-foreground">총 {results.length}명 · {user.email}</p>
           </div>
-          <button
-            onClick={() => navigate('/')}
-            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" /> 돌아가기
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+            >
+              <LogOut className="h-4 w-4" /> 로그아웃
+            </button>
+            <button
+              onClick={() => navigate('/')}
+              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="h-4 w-4" /> 돌아가기
+            </button>
+          </div>
         </div>
 
-        {loading ? (
+        {dataLoading ? (
           <p className="text-center text-muted-foreground">로딩 중...</p>
         ) : results.length === 0 ? (
           <p className="text-center text-muted-foreground">아직 데이터가 없어요</p>
