@@ -16,6 +16,7 @@ export default function Index() {
   const [step, setStep] = useState<Step>('landing');
   const [nickname, setNickname] = useState('');
   const [myAnswers, setMyAnswers] = useState<Answers>({});
+  const [personalProfile, setPersonalProfile] = useState<PersonalProfile | null>(null);
   const [saving, setSaving] = useState(false);
 
   // Compatibility check
