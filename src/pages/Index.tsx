@@ -25,6 +25,7 @@ export default function Index() {
   const [checking, setChecking] = useState(false);
   const [result, setResult] = useState<ReturnType<typeof calculateFinal> | null>(null);
   const [resultNames, setResultNames] = useState<{ a: string; b: string }>({ a: '', b: '' });
+  const [resultAnswers, setResultAnswers] = useState<{ a: Answers; b: Answers }>({ a: {}, b: {} });
 
   const handleQuizComplete = async (answers: Answers) => {
     setMyAnswers(answers);
@@ -100,6 +101,7 @@ export default function Index() {
       const answersB = dataB.answers as unknown as Answers;
       const finalResult = calculateFinal(answersA, answersB);
       setResultNames({ a: nickA.trim(), b: nickB.trim() });
+      setResultAnswers({ a: answersA, b: answersB });
       setResult(finalResult);
       setStep('result');
     } catch (e: any) {
@@ -318,6 +320,8 @@ export default function Index() {
             result={result}
             nameA={resultNames.a}
             nameB={resultNames.b}
+            answersA={resultAnswers.a}
+            answersB={resultAnswers.b}
             onReset={() => {
               setStep('landing');
               setResult(null);

@@ -1,11 +1,15 @@
 import { motion } from 'framer-motion';
-import type { FinalResult } from '@/lib/scoring';
-import { Heart, RotateCcw, TrendingUp, TrendingDown, Sparkles } from 'lucide-react';
+import type { FinalResult, Answers } from '@/lib/scoring';
+import { Heart, RotateCcw, TrendingUp, TrendingDown, Sparkles, Share2, Lightbulb } from 'lucide-react';
+import { generateRelationshipAdvice } from '@/lib/relationship-advice';
+import { toast } from 'sonner';
 
 interface Props {
   result: FinalResult;
   nameA: string;
   nameB: string;
+  answersA: Answers;
+  answersB: Answers;
   onReset: () => void;
 }
 
@@ -69,7 +73,31 @@ function StatBar({ label, value, max, delay }: { label: string; value: number; m
   );
 }
 
-export default function ResultView({ result, nameA, nameB, onReset }: Props) {
+export default function ResultView({ result, nameA, nameB, answersA, answersB, onReset }: Props) {
+  const advice = generateRelationshipAdvice(answersA, answersB, result);
+
+  const handleShare = async () => {
+    const text = `💕 연애 적합도 테스트 궁합 결과\n\n` +
+      `${nameA} ❤️ ${nameB}\n` +
+      `${result.gradeEmoji} ${result.grade} — ${result.finalScore}점\n\n` +
+      `${result.description}\n\n` +
+      `🔗 나도 테스트하기: ${window.location.origin}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: '연애 적합도 궁합 결과', text });
+        return;
+      } catch {}
+    }
+
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('결과가 클립보드에 복사되었어요!');
+    } catch {
+      toast.error('공유 실패');
+    }
+  };
+
   return (
     <div className="min-h-screen gradient-romantic">
       <div className="mx-auto max-w-lg px-4 py-10">
@@ -83,6 +111,9 @@ export default function ResultView({ result, nameA, nameB, onReset }: Props) {
           <h1 className="font-display text-3xl font-bold text-foreground mb-1">
             {result.grade}
           </h1>
+          <p className="text-sm text-muted-foreground mb-1">
+            <span className="font-semibold text-foreground">{nameA}</span> ❤️ <span className="font-semibold text-foreground">{nameB}</span>
+          </p>
           <p className="text-muted-foreground text-sm">{result.description}</p>
         </motion.div>
 
@@ -138,7 +169,7 @@ export default function ResultView({ result, nameA, nameB, onReset }: Props) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.7 }}
-            className="rounded-xl bg-card p-5 shadow-soft mb-8"
+            className="rounded-xl bg-card p-5 shadow-soft mb-6"
           >
             <h3 className="flex items-center gap-2 font-semibold text-foreground text-sm mb-3">
               ⚠️ 위험 패턴 (-{result.penalties.total})
@@ -151,27 +182,59 @@ export default function ResultView({ result, nameA, nameB, onReset }: Props) {
           </motion.div>
         )}
 
+        {/* ━━━ Relationship Advice ━━━ */}
+        {advice.map((section, sIdx) => (
+          <motion.div
+            key={section.title}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.8 + sIdx * 0.15 }}
+            className="rounded-xl bg-card p-5 shadow-soft mb-4"
+          >
+            <h3 className="flex items-center gap-2 font-display font-semibold text-foreground text-base mb-4">
+              <span className="text-lg">{section.icon}</span> {section.title}
+            </h3>
+            <div className="space-y-3">
+              {section.tips.map((tip, i) => (
+                <div key={i} className="flex gap-3">
+                  <div className="mt-1 shrink-0">
+                    <Lightbulb className="h-3.5 w-3.5 text-accent" />
+                  </div>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{tip}</p>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        ))}
+
         {/* Info */}
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.9 }}
-          className="text-center text-xs text-muted-foreground mb-6"
+          transition={{ delay: 1.3 }}
+          className="text-center text-xs text-muted-foreground mb-6 mt-8"
         >
           이 점수는 "얼마나 좋아하냐"가 아니라<br />
           "얼마나 오래 건강하게 유지되냐"를 측정합니다
         </motion.p>
 
-        {/* Reset */}
+        {/* Actions */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 1 }}
-          className="text-center"
+          transition={{ delay: 1.4 }}
+          className="space-y-3"
         >
           <button
+            onClick={handleShare}
+            className="w-full inline-flex items-center justify-center gap-2 rounded-lg gradient-hero px-6 py-3.5 text-sm font-semibold text-primary-foreground shadow-romantic hover:scale-105 transition-all"
+          >
+            <Share2 className="h-4 w-4" /> 결과 공유하기
+          </button>
+
+          <button
             onClick={onReset}
-            className="inline-flex items-center gap-2 rounded-lg gradient-hero px-6 py-3 text-sm font-medium text-primary-foreground shadow-romantic transition-transform hover:scale-105"
+            className="w-full inline-flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground py-2"
           >
             <RotateCcw className="h-4 w-4" /> 다시 하기
           </button>
