@@ -199,7 +199,7 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen gradient-romantic">
       <div className="mx-auto max-w-3xl px-4 py-8">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="font-display text-2xl font-bold text-foreground">🛠️ 관리자 모드</h1>
             <p className="text-sm text-muted-foreground">총 {results.length}명 · {user.email}</p>
@@ -218,6 +218,30 @@ export default function AdminPage() {
               <ArrowLeft className="h-4 w-4" /> 돌아가기
             </button>
           </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-2 mb-6">
+          <button
+            onClick={() => setActiveTab('results')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === 'results'
+                ? 'gradient-hero text-primary-foreground'
+                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+            }`}
+          >
+            📋 데이터 관리
+          </button>
+          <button
+            onClick={() => setActiveTab('compatibility')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === 'compatibility'
+                ? 'gradient-hero text-primary-foreground'
+                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+            }`}
+          >
+            <Heart className="h-3.5 w-3.5" /> 궁합 시뮬레이션
+          </button>
         </div>
 
         {dataLoading ? (
