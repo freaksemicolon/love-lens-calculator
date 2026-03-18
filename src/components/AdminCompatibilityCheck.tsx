@@ -158,9 +158,8 @@ export default function AdminCompatibilityCheck({ onBack }: Props) {
       const names = [resultNames.a, resultNames.b].sort();
       const recordNames = [record.nickname_a, record.nickname_b].sort();
       if (names[0] === recordNames[0] && names[1] === recordNames[1]) {
-        const { grade, gradeEmoji, description } = getGradeInfo(record.original_score);
-        setResult({ ...result, finalScore: record.original_score, grade, gradeEmoji, description });
-        setOriginalScore(record.original_score);
+        setResult(originalResultRef.current!);
+        setOriginalScore(originalResultRef.current!.finalScore);
       }
     }
 
