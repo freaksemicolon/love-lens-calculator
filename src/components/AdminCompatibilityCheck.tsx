@@ -27,14 +27,6 @@ interface OverrideRecord {
   created_at: string;
 }
 
-function getGradeInfo(score: number) {
-  if (score >= 90) return { grade: '매우 안정적', gradeEmoji: '💖', description: '오래갈 수 있는 관계예요. 서로를 잘 이해하고 있어요.' };
-  if (score >= 80) return { grade: '좋은 관계', gradeEmoji: '💕', description: '서로에게 좋은 영향을 주고 있어요.' };
-  if (score >= 70) return { grade: '노력 필요', gradeEmoji: '💛', description: '약간의 노력으로 더 좋아질 수 있어요.' };
-  if (score >= 60) return { grade: '피로한 연애', gradeEmoji: '🧡', description: '지치지 않도록 서로 배려가 필요해요.' };
-  if (score >= 50) return { grade: '불안정', gradeEmoji: '💔', description: '관계에 불안정한 요소가 많아요.' };
-  return { grade: '구조적 어려움', gradeEmoji: '🩹', description: '근본적인 대화와 변화가 필요해요.' };
-}
 
 export default function AdminCompatibilityCheck({ onBack }: Props) {
   const [people, setPeople] = useState<QuizPerson[]>([]);
